@@ -46,6 +46,7 @@ The bicycle agent contains following parameters:
   * Angular velocity
   * Coordinate information
 
+![Bike 1](images/bike1.jpg)
 
 The bicycle has two dimensional vector that can update each state.
   * Acceleration increment: (-5, +5) (with maximum acceleration)
