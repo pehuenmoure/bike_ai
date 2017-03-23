@@ -1,6 +1,6 @@
 ---
 # CS 4701 Project Proposal
-#### Kenta Takatsu | Pehuen Moore
+#### Kenta Takatsu | Pehuen Moure
 ---
 ### Summary
 Our project will teach AI how to ride a bicycle.
@@ -12,7 +12,7 @@ Experiment how the more complicated machine learning algorithms are capable of d
   * Objective: Balance the bicycle as long as possible
 
 
-- Multi-task agent 
+- Multi-task agent
   * Objective: Move between points as fast as possible while balancing the agent
 
 
