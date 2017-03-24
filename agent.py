@@ -1,10 +1,16 @@
 import numpy as np
 import math
+import random
 
 # constants
-G = 5.
-MASS = 10.
-HEIGHT = 8.
+G = 50.
+MASS = 100.
+HEIGHT = 40.
+TIMESTEP = 0.05
+LENGTH = 2.
+
+MAX_VELOCITY = 100.
+MAX_ACCELERATION = 3.
 
 # Bike object represents the agent that our AI will study and
 class Bike(object):
@@ -27,20 +33,24 @@ class Bike(object):
 	turning_r [float]: turning radius of the bicycle
 	"""
 
-	def __init__(self, xy_coord = (0.,0.,0.), direction = [1.,1.], \
-				steering_vector = [1., 1.], speed = 0., acc = 1, \
+	def __init__(self, xy_coord = [0.,0.,0.], direction = [0.,1., 0.], \
+				steering_vector = [0., 0., 0.], speed = 0., acc = 0.0, \
 				lean_ang = 0., steer_ang = 0.):
+
 		""" Bike initializer """
 		self.xy_coord = xy_coord
 		self.direction = direction
 		self.steering_vector = steering_vector
 		self.speed = speed
 		self.acc = acc
-		self.lean_ang = lean_ang
-		self.steer_ang = steer_ang
+		self.lean_ang = lean_ang	# in radians
+		self.steer_ang = steer_ang	# in radians
 		self.height = HEIGHT
+		self.length = LENGTH
 		self.mass = MASS
-		self.turning_r = 0.
+		self.omega = 0.
+		self.center_mass = [0.,0.,0.]
+		self.is_dead = False
 
 	@property
 	def vector(self):
@@ -55,19 +65,71 @@ class Bike(object):
 		acceleration and steering angle
 		'''
 		self.acc += delta_acc
-		self.steer_ang += delta_steer
+		# catch the boundary
+		if self.acc > MAX_ACCELERATION:
+			self.acc = MAX_ACCELERATION
+		elif self.acc < -MAX_ACCELERATION:
+			self.acc = -MAX_ACCELERATION
+
+		self.steer_ang += np.radians(delta_steer)
+
+		self.update()
 
 	def update(self):
-		self.speed += self.acc
+		if(not self.is_dead):
+			self.speed += self.acc
+			# catch the boundary
+			if self.speed > MAX_VELOCITY:
+				self.speed = MAX_VELOCITY
+			elif self.speed < -MAX_VELOCITY:
+				self.speed = -MAX_VELOCITY
 
-		# TODO
-		# - update steering vector
-		# - update lean_ang
-		#		(if center of mass if right on the position, add very small noise)
-		# - update direction
-		# - update xy_coord
-		# - update turning_r
+			self.steering_vector += \
+				np.array([np.sin(self.steer_ang), np.cos(self.steer_ang), 0.])
 
+
+			# new direction is norm(direction + steering vector)
+			self.direction = (self.direction + self.steering_vector) / \
+			np.linalg.norm (self.direction + self.steering_vector)
+
+			# - update lean_ang
+			# law of cosines
+			if (self.steer_ang == 0 or self.speed == 0):
+				if (np.array_equal(self.xy_coord, self.center_mass)):
+					self.center_mass[0] += random.gauss(0,1)/10
+
+				delta = self.center_mass[0] - self.xy_coord[0]
+
+				# angular velocity
+				self.omega += np.sin(self.height / delta / 8.) / 10
+				self.lean_ang += self.omega * TIMESTEP
+
+			else:
+				side = math.sqrt(2. * (self.length / 2.)**2. - 2 * (self.length / 2.)**2. * math.cos(self.steer_ang))
+				turning_radius = side / (2. * math.sin(self.steer_ang))
+				print(turning_radius)
+				self.lean_ang += -np.arctan(self.speed**2 / (turning_radius*1000)) / 100
+				print(self.lean_ang)
+				# (if center of mass if right on the position, add very small noise)
+
+			# catch the boundary
+			if (self.lean_ang > np.pi / 2.):
+				self.lean_ang = np.pi / 2.
+				self.is_dead = True
+			elif (self.lean_ang < - np.pi / 2.):
+				self.lean_ang = - np.pi / 2.
+				self.is_dead = True
+
+			# - update xy_coord
+			self.xy_coord += self.direction * self.speed * TIMESTEP
+
+			# catch the boundary
+			if (self.xy_coord[0]>50):
+				self.xy_coord[0]=50
+				self.is_dead = True
+			elif (self.xy_coord[0]<-50):
+				self.xy_coord[0]=-50
+				self.is_dead = True
 
 
 bike = Bike()
