@@ -36,11 +36,11 @@ Evaluation function will encourage the gene selection of genetic algorithm (fitn
 
 ### Simulation 
 
-![Simulaion 1](videos/test.mov)
+![Simulaion 1](videos/test.gif)
 
 We also developed a simulaiton using moving obstacles:
 
-![Simulaiton 2](videos/test1.mov)
+![Simulaiton 2](videos/test2.gif)
 
 
 ### Upcoming Algorithms
