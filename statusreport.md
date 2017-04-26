@@ -22,7 +22,8 @@ The bicycle agent contains following parameters:
 
 
 ### Evaluation Functions
-Evaluation function will encourage the gene selection of genetic algorithm (fitness)
+Evaluation function will encourage the gene selection of genetic algorithm (fitness). Our evalution function is based on two factors: distance from target and number of steps necessary to reach the target. If the target is not reached then the distance is minimized, once an agent reaches the target it attempts to minimize the number of steps to reach the target.
+
 
 ### Algorithm
   1. Initialize environment by setting the target destination and randomly distributing the walls
@@ -32,6 +33,10 @@ Evaluation function will encourage the gene selection of genetic algorithm (fitn
   5. Else if the agents died calculate its fitness and remove it from the live agents set.
   6. Else if the set of live agents is not empty return to step 3
   7. Else sort the agents based on their calculated fitness. Choose the top two agents and use their chromosomes as a basis for the next generations.
+
+
+### Mutation
+Once the two best agents are selected the next generations chromosomes are created as a 50% combination of both agents as well as some randomness.
 
 
 ### Simulation 
