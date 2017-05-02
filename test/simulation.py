@@ -50,7 +50,7 @@ class Evolution(object):
             if command == None:
                 i.dead()
                 i.getFitness(self.step) # evaluate score
-            i.update(screen, command, draw, self.step)
+            i.update(screen, command, draw, self.step, self.walls)
             for i in self.walls:
                 i.update(screen,draw)
         self.step += 1
