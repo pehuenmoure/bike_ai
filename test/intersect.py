@@ -2,7 +2,7 @@ import numpy as np
 import math
 from variables import *
 
-''' 
+'''
 Determines whether the box representing two line segments cross
 '''
 def pointInLineSeg (ls1, ls2, p):
@@ -48,7 +48,7 @@ def getLineIntersect(l1,l2):
 			return (float('inf'),float('inf'))
 		else:
 			# Parallel but not same line
-			return None 
+			return None
 	# l1 and l2 are not vertical and not parellel
 	elif (s1 is not None) and (s2 is not None):
 		b1 = Y1 - s1*X1
@@ -90,32 +90,25 @@ if __name__ == "__main__":
     # line 5 is horizontal, line 4 is vertical
 	p1 = (1,5)
 	p2 = (4,7)
-    
-    p3 = (4,5)
-    p4 = (3,7)
-    
-    p5 = (4,1)
-    p6 = (3,3)
-    
-    p7 = (3,1)
-    p8 = (3,10)
-    
+	p3 = (4,5)
+	p4 = (3,7)
+	p5 = (4,1)
+	p6 = (3,3)
+	p7 = (3,1)
+	p8 = (3,10)
 	p9 =  (0,6)
 	p10 = (5,6)
-    
-    p11 = (472.0, 116.0)
-    p12 = (542.0, 116.0)  
-
-    assert None != calculateIntersect((p1, p2), (p3, p4)), "line 1 line 2 should intersect"
-    assert None != calculateIntersect((p3, p4), (p1, p2)), "line 2 line 1 should intersect"
-    assert None == calculateIntersect((p1, p2), (p5, p6)), "line 1 line 3 shouldn't intersect"
-    assert None == calculateIntersect((p3, p4), (p5, p6)), "line 2 line 3 shouldn't intersect"
-    assert None != calculateIntersect((p1, p2), (p7, p8)), "line 1 line 4 should intersect"
-    assert None != calculateIntersect((p7, p8), (p1, p2)), "line 4 line 1 should intersect"
-    assert None != calculateIntersect((p1, p2), (p9, p10)), "line 1 line 5 should intersect"
-    assert None != calculateIntersect((p9, p10),( p1, p2)), "line 5 line 1 should intersect"
-    assert None != calculateIntersect((p7, p8), (p9, p10)), "line 4 line 5 should intersect"
-    assert None != calculateIntersect((p9, p10),( p7, p8)), "line 5 line 4 should intersect"
-
-    print ("\nSUCCESS! All asserts passed for doLinesIntersect")
-
+	p11 = (472.0, 116.0)
+	p12 = (542.0, 116.0)
+	assert None != calculateIntersect((p1, p2), (p3, p4)), "line 1 line 2 should intersect"
+	assert None != calculateIntersect((p3, p4), (p1, p2)), "line 2 line 1 should intersect"
+	assert None == calculateIntersect((p1, p2), (p5, p6)), "line 1 line 3 shouldn't intersect"
+	assert None == calculateIntersect((p3, p4), (p5, p6)), "line 2 line 3 shouldn't intersect"
+	assert None != calculateIntersect((p1, p2), (p7, p8)), "line 1 line 4 should intersect"
+	assert None != calculateIntersect((p7, p8), (p1, p2)), "line 4 line 1 should intersect"
+	assert None != calculateIntersect((p1, p2), (p9, p10)), "line 1 line 5 should intersect"
+	assert None != calculateIntersect((p9, p10),( p1, p2)), "line 5 line 1 should intersect"
+	assert None != calculateIntersect((p7, p8), (p9, p10)), "line 4 line 5 should intersect"
+	assert None != calculateIntersect((p9, p10),( p7, p8)), "line 5 line 4 should intersect"
+	print ("\nSUCCESS! All asserts passed for doLinesIntersect")
+	print(None == calculateIntersect((p1, p2), (p5, p6)))

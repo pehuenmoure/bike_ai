@@ -1,5 +1,5 @@
 from agent import *
-
+import matplotlib.pyplot as plt
 
 ''' Evolution class will store all environments where the agents live and also dictate the mutation / cross over '''
 
@@ -21,25 +21,29 @@ class Evolution(object):
         agents = []
         for i in range(community):
             random.seed()
-            a = Agent()
+            a = Agent(pos = np.array([50., HEIGHT - 50.]))
             agents.append(a)
         self.agents = agents
         self.generation = 0
         self.community = community
         self.step = 0
 
-        pygame.init() # initialize pygame environment
-        self.screen = pygame.display.set_mode((int(WIDTH), int(HEIGHT)))
-
+        # pygame.init() # initialize pygame environment
+        # self.screen = pygame.display.set_mode((int(WIDTH), int(HEIGHT)))
+        self.screen = None
         self.target = Target()
         walls = []
         for i in range(WALL):
             walls.append(Wall(move = WALL_MOVE))
         self.walls = walls
 
+        food = []
+        for i in range(FOOD):
+            food.append(Food())
+        self.food = food
+
         self.bestfit = np.inf # store the best agent in the simulation
         self.bestagent = []
-
 
     def update(self, screen, draw):
         ''' every frame access the environment and agents to update the location
@@ -48,11 +52,14 @@ class Evolution(object):
             command = i.getCommand(self.step)
             # if the gene is empty the agent is dead
             if command == None:
-                i.dead()
                 i.getFitness(self.step) # evaluate score
+                i.dead()
             i.update(screen, command, draw, self.step, self.walls)
             for i in self.walls:
                 i.update(screen,draw)
+        if draw:
+            for i in self.food:
+                i.draw(screen)
         self.step += 1
 
     def extinct(self):
@@ -88,7 +95,7 @@ class Evolution(object):
                     Gene.append(bestChildren[0].gene[j])
                 else:
                     Gene.append(bestChildren[1].gene[j])
-            a = Agent()
+            a = Agent(pos = np.array([50., HEIGHT - 50.]))
             a.setGene(Gene)
             # create an array of agents for the next generation
             nextGen.append(a)
@@ -100,17 +107,25 @@ class Evolution(object):
             for j in self.walls:
                 if i.pos[0] > j.pos[0] and i.pos[0] < j.pos[0] + j.width and \
                 i.pos[1] < j.pos[1] + j.height and j.pos[1] < i.pos[1]:
-                    i.dead() # kill the agent
                     i.getFitness(self.step) # evaluate the score
+                    i.dead()
 
     def hitTarget(self, step):
         ''' Kill an agent which reach the destination '''
         for i in self.agents:
                 if i.pos[0] > self.target.pos[0]-10 and i.pos[0] < self.target.pos[0] + 10 and \
                 i.pos[1] < self.target.pos[1]+10 and self.target.pos[1]-10 <  i.pos[1]:
-                    i.dead() # kill the agent
-                    i.fitness = -(1000-step) # evaluate the score ( is the best)
 
+                    i.fitness = -(GENE-step) # evaluate the score ( is the best)
+                    i.dead() # kill the agent
+
+    def recoverHealth(self):
+        for i in self.agents:
+            for f in self.food:
+                dist = np.linalg.norm(i.pos - f.pos)
+                if dist < 5:
+                    # f.color = (125,125,125)
+                    i.health += NUTRIENT
 
     def run(self):
         ''' Run the simulation '''
@@ -129,12 +144,14 @@ class Evolution(object):
                 self.target.draw(self.screen) # draw target
                 self.update(self.screen,True) # update current environment
                 self.collision() # check collisions
+                self.recoverHealth() # check food
                 self.hitTarget(self.step) # check if the agent reached the destination
                 pygame.display.flip() # update the image
             # no animation
             else:
                 self.update(self.screen,False) # update current environment
                 self.collision()  # check collisions
+                self.recoverHealth() # check food
                 self.hitTarget(self.step) # check if the agent reached the destination
 
 
@@ -149,7 +166,6 @@ class Evolution(object):
                 #clock.tick(60)
 
             extinct = self.extinct() # check extinction
-
         self.generation += 1 # +1 to the generation
         self.step = 0 # reset frame
 
@@ -160,7 +176,7 @@ class Evolution(object):
             self.bestagent = [best]
         # append the agent with the best fitness so far to the next generation
         if len(self.bestagent)>0:
-            a = Agent()
+            a = Agent(pos = np.array([50., HEIGHT - 50.]))
             a.setGene(self.bestagent[0].gene)
             a.setElite() # color differently
             self.agents.pop()
@@ -171,3 +187,248 @@ class Evolution(object):
         for i in self.walls:
             i.reset()
         self.run() # start new generation
+
+class DeepEvolution(Evolution):
+    def __init__(self, comm = 10, train_iteration = 1000):
+        super().__init__(community = comm)
+        # competition of 2 agents
+        c_agents = []
+        for i in range(comm):
+            random.seed()
+            a = Agent(deep = True, pos = np.array([50., HEIGHT - 50.]), mode = 'chaser')
+            c_agents.append(a)
+        self.chaser = c_agents
+
+        r_agents = []
+        for i in range(comm):
+            random.seed()
+            a = Agent(deep = True, pos = np.array([WIDTH - 50., 50.]), direction = np.array([0.,1.]), mode = 'chaser')
+            r_agents.append(a)
+        self.runner = r_agents
+
+        self.communityNum = 0;
+
+    def update(self, screen, draw):
+        ''' every frame access the environment and agents to update the location
+        '''
+        for i in self.walls:
+            i.update(screen,draw)
+
+        self.runner[self.communityNum].sensor.update(self.runner[self.communityNum].pos, self.runner[self.communityNum].dir, self.walls)
+        self.chaser[self.communityNum].sensor.update(self.chaser[self.communityNum].pos, self.chaser[self.communityNum].dir, self.walls)
+
+        commandR = self.runner[self.communityNum].nn.predict(np.array(self.runner[self.communityNum].sensor.vector).reshape(1,7))
+        commandC = self.chaser[self.communityNum].nn.predict(np.array(self.chaser[self.communityNum].sensor.vector).reshape(1,7))
+        move = [-1,0,1]
+        self.runner[self.communityNum].update(screen, commandR, draw, self.step, opponent = self.chaser[self.communityNum])
+        self.chaser[self.communityNum].update(screen, commandC, draw, self.step, opponent = self.runner[self.communityNum])
+
+        if draw:
+            for i in self.food:
+                i.draw(screen)
+        self.step += 1
+
+    def collision(self):
+        ''' Kill an agent which collides with the obstacle '''
+        i = self.runner[self.communityNum]
+        for j in self.walls:
+            if i.pos[0] > j.pos[0] and i.pos[0] < j.pos[0] + j.width and \
+            i.pos[1] < j.pos[1] + j.height and j.pos[1] < i.pos[1]:
+                if i.isAlive:
+                    i.getFitnessChaser(self.step, self.chaser[self.communityNum]) # evaluate the score
+                i.dead() # kill the agent
+        i = self.chaser[self.communityNum]
+        for j in self.walls:
+            if i.pos[0] > j.pos[0] and i.pos[0] < j.pos[0] + j.width and \
+            i.pos[1] < j.pos[1] + j.height and j.pos[1] < i.pos[1]:
+                if i.isAlive:
+                    i.getFitnessChaser(self.step, self.runner[self.communityNum]) # evaluate the score
+                i.dead() # kill the agent
+    def check_gameover(self):
+        return not self.runner[self.communityNum].isAlive and not self.chaser[self.communityNum].isAlive
+
+    def AgentsCollision(self, step):
+        if self.runner[self.communityNum].pos[0] == self.chaser[self.communityNum].pos[0] and \
+        self.runner[self.communityNum].pos[1] == self.chaser[self.communityNum].pos[1]:
+            self.runner[self.communityNum].dead()
+            self.chaser[self.communityNum].dead()
+
+            self.runner[self.communityNum].getFitnessChaser(step, self.chaser[self.communityNum])
+
+            self.chaser[self.communityNum].getFitnessChaser(step, self.runner[self.communityNum])
+
+    def NNcrossOver(self, A, B):
+        ''' create W and B '''
+        random.seed()
+
+        wA = A.nn.getW()
+        bA = A.nn.getB()
+
+        wB = B.nn.getW()
+        bB = B.nn.getB()
+
+        w = {}
+        matrix = []
+        for i in range(n_input):
+            vector = []
+            for j in range(n_hidden_1):
+                r = random.random()
+                # create a random command with given rate
+                if r < MUTATION:
+                    vector.append(random.random())
+                # with 50% chance from parentA, 50% chance from parentB
+                elif r < (MUTATION + (1 - MUTATION) / 2):
+                    vector.append(wA['h1'].item(i,j))
+                else:
+                    vector.append(wB['h1'].item(i,j))
+            matrix.append(vector)
+        w['h1'] = np.matrix(matrix)
+
+        matrix = []
+        for i in range(n_hidden_1):
+            vector = []
+            for j in range(n_hidden_2):
+                r = random.random()
+                # create a random command with given rate
+                if r < MUTATION:
+                    vector.append(random.random())
+                # with 50% chance from parentA, 50% chance from parentB
+                elif r < (MUTATION + (1 - MUTATION) / 2):
+                    vector.append(wA['h2'].item(i,j))
+                else:
+                    vector.append(wB['h2'].item(i,j))
+            matrix.append(vector)
+        w['h2'] = np.matrix(matrix)
+
+        matrix = []
+        for i in range(n_hidden_2):
+            vector = []
+            for j in range(n_classes):
+                r = random.random()
+                # create a random command with given rate
+                if r < MUTATION:
+                    vector.append(random.random())
+                # with 50% chance from parentA, 50% chance from parentB
+                elif r < (MUTATION + (1 - MUTATION) / 2):
+                    vector.append(wA['out'].item(i,j))
+                else:
+                    vector.append(wB['out'].item(i,j))
+            matrix.append(vector)
+        w['out'] = np.matrix(matrix)
+
+        b = {}
+        vector = []
+        for i in range(n_hidden_1):
+            r = random.random()
+            # create a random command with given rate
+            if r < MUTATION:
+                vector.append(random.random())
+            # with 50% chance from parentA, 50% chance from parentB
+            elif r < (MUTATION + (1 - MUTATION) / 2):
+                vector.append(bA['b1'].item(i))
+            else:
+                vector.append(bB['b1'].item(i))
+        b['b1'] = np.array(vector)
+
+        vector = []
+        for i in range(n_hidden_2):
+            r = random.random()
+            # create a random command with given rate
+            if r < MUTATION:
+                vector.append(random.random())
+            # with 50% chance from parentA, 50% chance from parentB
+            elif r < (MUTATION + (1 - MUTATION) / 2):
+                vector.append(bA['b2'].item(i))
+            else:
+                vector.append(bB['b2'].item(i))
+        b['b2'] = np.array(vector)
+
+        vector = []
+        for i in range(n_hidden_2):
+            r = random.random()
+            # create a random command with given rate
+            if r < MUTATION:
+                vector.append(random.random())
+            # with 50% chance from parentA, 50% chance from parentB
+            elif r < (MUTATION + (1 - MUTATION) / 2):
+                vector.append(bA['out'].item(i))
+            else:
+                vector.append(bB['out'].item(i))
+        b['out'] = np.array(vector)
+
+        return w, b
+
+    def train(self):
+        runner_status = []
+        chaser_status = []
+        print('initiate Training')
+        for i in range(1000):
+            ''' train 2 agents '''
+            runner_store = []
+            chaser_store = []
+            for i in range(self.community):
+                GAME_OVER = False
+                while not GAME_OVER:
+                    # for event in pygame.event.get():
+                    #     if event.type == pygame.QUIT:
+                    #             extinct = True
+                    # self.screen.fill((0, 0, 0)) # reset canvas
+                    self.update(self.screen, False)
+                    self.collision()
+                    self.AgentsCollision(self.step)  # check collisions
+                    GAME_OVER = self.check_gameover()
+                    # pygame.display.flip() # update the image
+                runner_store.append((self.runner[self.communityNum].fitness, self.communityNum))
+                chaser_store.append((self.chaser[self.communityNum].fitness, self.communityNum))
+                self.communityNum += 1
+            print('End of generation')
+            self.communityNum = 0
+            walls = []
+            for i in range(WALL):
+                walls.append(Wall(move = WALL_MOVE))
+            self.walls = walls
+
+            runner_store.sort()
+            chaser_store.sort()
+            runner_status.append(runner_store[0][0])
+            parentA_runner = runner_store[0][1]
+            parentB_runner = runner_store[1][1]
+
+            chaser_status.append(chaser_store[0][0])
+            chaserA_runner = chaser_store[0][1]
+            chaserB_runner = chaser_store[1][1]
+
+            c_agents = []
+            for i in range(self.community):
+                random.seed()
+                a = Agent(deep = True, pos = np.array([50., HEIGHT - 50.]), mode = 'chaser')
+                w,b = self.NNcrossOver(self.chaser[chaserA_runner], self.chaser[chaserB_runner])
+                a.nn.setB(b)
+                a.nn.setW(w)
+                c_agents.append(a)
+            self.chaser = c_agents
+
+            r_agents = []
+            for i in range(self.community):
+                random.seed()
+                a = Agent(deep = True, pos = np.array([WIDTH - 50., 50.]), direction = np.array([0.,1.]), mode = 'chaser')
+                w,b = self.NNcrossOver(self.runner[parentA_runner], self.runner[parentB_runner])
+                a.nn.setB(b)
+                a.nn.setW(w)
+                r_agents.append(a)
+            self.runner = r_agents
+
+
+        print('Terminate Training')
+        fig = plt.figure()
+        plt.title('Training Progress')
+        plt.xlabel('Generation')
+        plt.ylabel('Fitness')
+        plt.plot(runner_status)
+        plt.plot(chaser_status)
+        plt.legend(['Chaser1', 'Chaser2'])
+        fig.savefig('training.png')
+
+if __name__ == '__main__':
+    d = DeepEvolution(comm = 10)
+    d.train()

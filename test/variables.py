@@ -11,12 +11,25 @@ AGENT_H = 10 # height of the agents
 COLOR = (0,255,0) # color of the agents
 COLOR_C = (0,0,255) # the center circle of the agents
 THETA = 3 # turning angle
-GENE = 400 # the length of chromosome (sequence of commands)
-SENSOR_LENGTH = 30
+GENE = 450 # the length of chromosome (sequence of commands)
+HEALTH = 1000 # the fuel of the agent
+NUTRIENT = 0 # the fuel recovers by picking up food
+
+MAXSTEP = 3000 # give runner the chance to win
 
 # Simulation
-MUTATION = 0.01 # mutation rate
-WALL = 10 # number of walls
+MUTATION = 0.1 # mutation rate
+WALL = 15 # number of walls
 WALL_MOVE = False # stationary walls
-FREQ = 100 # animation frequency (every 100 generation)
+FREQ = 10 # animation frequency (every 100 generation)
 
+FOOD = 0 # number of food generated in the map
+
+# Sensor
+RADIUS = 50
+
+# Network Parameters
+n_hidden_1 =  5 # 1st layer number of features
+n_hidden_2 =  3 # 2nd layer number of features
+n_input =  7    # input
+n_classes = 3   # left, straight, right
