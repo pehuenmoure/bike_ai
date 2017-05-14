@@ -3,8 +3,9 @@ import math
 import random
 import pygame
 from variables import *
+from intersect import *
 from nn import *
-from sensor import *
+from scipy.spatial import distance
 
 ''' the agent moves with constant speed '''
 class Agent(object):
@@ -35,15 +36,58 @@ class Agent(object):
                 gene.append(1)
         self.gene = gene
         self.isElite = False
+        self.sensors = np.array(5*[(0.0,0.0)])
+        self.sensors2 = np.array(5*[-1.])
+        self.offsets = np.arange(-180, 1, 45)
+        self.sensorLength = RADIUS
+
         self.health = HEALTH
         if (deep):
             self.nn = NeuralNet()
-            self.sensor = Sensor(self.pos, self.dir)
             self.type = mode
         else:
             self.nn = None
-            self.sensor = None
             self.type = None
+
+    def updateSensorData(self, walls):
+        if self.dir[0] > 0:
+            cosang = np.dot(np.array([0.,-1.]), self.dir)
+            sinang = np.linalg.norm(np.cross(np.array([0.,-1.]), self.dir))
+            theta = np.arctan2(sinang, cosang)
+        else:
+            cosang = np.dot(np.array([0.,-1.]), self.dir)
+            sinang = np.linalg.norm(np.cross(np.array([0.,-1.]), self.dir))
+            theta = -np.arctan2(sinang, cosang)
+
+        thetas = np.rad2deg(theta) + self.offsets
+        thetas = np.deg2rad(thetas)
+        length = self.sensorLength
+
+        edges = [([0,0],[0,HEIGHT]), ([0,0],[WIDTH,0]), ([WIDTH,0],[WIDTH,HEIGHT]), ([0,HEIGHT],[WIDTH,HEIGHT])]
+
+        for i in np.arange(thetas.size):
+            dx = self.pos[0] + length * np.cos(thetas[i])
+            dy = self.pos[1] + length * np.sin(thetas[i])
+
+            done = False
+            for w in walls:
+                if done: break
+                wLineSeg = [(w.pos, w.pos+[w.width, 0]), (w.pos,w.pos+[0, w.height]), \
+                 (w.pos+[w.width, 0], w.pos+[w.width,w.height]), \
+                 (w.pos+[0, w.height], w.pos+[w.width,w.height])]
+                wLineSeg = wLineSeg + edges
+                for ls in wLineSeg:
+                    p = calculateIntersect( \
+                        ((self.pos[0],self.pos[1]),(dx,dy)), \
+                        ((ls[0][0],ls[0][1]),(ls[1][0], ls[1][1])) )
+                    if p is None:
+                        self.sensors[i] = (dx,dy)
+                        self.sensors2[i] = -1.
+                    else:
+                        self.sensors[i] = p
+                        self.sensors2[i] = distance.euclidean(p,(self.pos[0],self.pos[1]))
+                        done = True
+                        break
 
     def draw(self, screen):
         ''' draw current state of agent onto the screen '''
@@ -74,12 +118,16 @@ class Agent(object):
         else:
             pygame.draw.polygon(screen, COLOR ,[[x+nx,y+ny],[x-nx-dx,y-ny+dy],[x-nx+dx,y-ny-dy]])
 
-        if self.sensor != None:
-            self.sensor.draw(screen)
+        # if self.sensor != None:
+        #     self.sensor.draw(screen)
+
+        for i in range(5):
+            color = COLOR_C if self.sensors2[i] == -1. else COLOR_S
+            pygame.draw.line(screen, color, self.pos, self.sensors[i], 1)
 
         pygame.draw.circle(screen,COLOR_C,[int(x),int(y)],2)
 
-    def update(self, screen, command, draw, step, opponent = None):
+    def update(self, screen, command, draw, step, walls, opponent = None):
         ''' update based on the command
             -1: left
             0 : forward
@@ -112,6 +160,7 @@ class Agent(object):
                     elif self.type == 'chaser' and self.isAlive:
                         self.getFitnessChaser(step, opponent)
                 self.isAlive = False
+            self.updateSensorData(walls)
         if (draw):
             self.draw(screen)
 
@@ -177,8 +226,8 @@ class Target(object):
 
 class Wall(object):
     def __init__(self, move = False):
-        position = np.array([random.random() * WIDTH, random.random() * HEIGHT])
-        self.init = position
+        position = np.array([random.random() * WIDTH, 50 + random.random() * (HEIGHT -100)])
+        self.init = np.copy(position)
         self.pos = position
         self.width = 100 + 100 * random.random()
         self.height = 10

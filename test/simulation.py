@@ -28,9 +28,9 @@ class Evolution(object):
         self.community = community
         self.step = 0
 
-        # pygame.init() # initialize pygame environment
-        # self.screen = pygame.display.set_mode((int(WIDTH), int(HEIGHT)))
-        self.screen = None
+        pygame.init() # initialize pygame environment
+        self.screen = pygame.display.set_mode((int(WIDTH), int(HEIGHT)))
+        # self.screen = None
         self.target = Target()
         walls = []
         for i in range(WALL):
@@ -54,7 +54,7 @@ class Evolution(object):
             if command == None:
                 i.getFitness(self.step) # evaluate score
                 i.dead()
-            i.update(screen, command, draw, self.step, self.walls)
+            i.update(screen, command, draw, self.step,self.walls, self.walls)
             for i in self.walls:
                 i.update(screen,draw)
         if draw:
@@ -214,14 +214,22 @@ class DeepEvolution(Evolution):
         for i in self.walls:
             i.update(screen,draw)
 
-        self.runner[self.communityNum].sensor.update(self.runner[self.communityNum].pos, self.runner[self.communityNum].dir, self.walls)
-        self.chaser[self.communityNum].sensor.update(self.chaser[self.communityNum].pos, self.chaser[self.communityNum].dir, self.walls)
+        # self.runner[self.communityNum].sensor.update(self.runner[self.communityNum].pos, self.runner[self.communityNum].dir, self.walls)
+        # self.chaser[self.communityNum].sensor.update(self.chaser[self.communityNum].pos, self.chaser[self.communityNum].dir, self.walls)
 
-        commandR = self.runner[self.communityNum].nn.predict(np.array(self.runner[self.communityNum].sensor.vector).reshape(1,7))
-        commandC = self.chaser[self.communityNum].nn.predict(np.array(self.chaser[self.communityNum].sensor.vector).reshape(1,7))
+        runner = self.runner[self.communityNum]
+        chaser = self.chaser[self.communityNum]
+
+        visionR = np.array(list(map(lambda x: RADIUS if x == -1 else x, runner.sensors2.tolist())) + [(chaser.pos[0] - runner.pos[0]), (chaser.pos[1] - runner.pos[1])])
+
+        commandR = runner.nn.predict(visionR.reshape(1,7))
+
+        visionC = np.array(list(map(lambda x: RADIUS if x == -1 else x, chaser.sensors2.tolist())) + [(runner.pos[0] - chaser.pos[0]), (runner.pos[1] - chaser.pos[1])])
+
+        commandC = chaser.nn.predict(visionC.reshape(1,7))
         move = [-1,0,1]
-        self.runner[self.communityNum].update(screen, commandR, draw, self.step, opponent = self.chaser[self.communityNum])
-        self.chaser[self.communityNum].update(screen, commandC, draw, self.step, opponent = self.runner[self.communityNum])
+        self.runner[self.communityNum].update(screen, commandR, draw, self.step,self.walls, opponent = self.chaser[self.communityNum])
+        self.chaser[self.communityNum].update(screen, commandC, draw, self.step,self.walls, opponent = self.runner[self.communityNum])
 
         if draw:
             for i in self.food:
@@ -244,6 +252,7 @@ class DeepEvolution(Evolution):
                 if i.isAlive:
                     i.getFitnessChaser(self.step, self.runner[self.communityNum]) # evaluate the score
                 i.dead() # kill the agent
+
     def check_gameover(self):
         return not self.runner[self.communityNum].isAlive and not self.chaser[self.communityNum].isAlive
 
@@ -284,24 +293,24 @@ class DeepEvolution(Evolution):
             matrix.append(vector)
         w['h1'] = np.matrix(matrix)
 
-        matrix = []
-        for i in range(n_hidden_1):
-            vector = []
-            for j in range(n_hidden_2):
-                r = random.random()
-                # create a random command with given rate
-                if r < MUTATION:
-                    vector.append(random.random())
-                # with 50% chance from parentA, 50% chance from parentB
-                elif r < (MUTATION + (1 - MUTATION) / 2):
-                    vector.append(wA['h2'].item(i,j))
-                else:
-                    vector.append(wB['h2'].item(i,j))
-            matrix.append(vector)
-        w['h2'] = np.matrix(matrix)
+        # matrix = []
+        # for i in range(n_hidden_1):
+        #     vector = []
+        #     for j in range(n_hidden_2):
+        #         r = random.random()
+        #         # create a random command with given rate
+        #         if r < MUTATION:
+        #             vector.append(random.random())
+        #         # with 50% chance from parentA, 50% chance from parentB
+        #         elif r < (MUTATION + (1 - MUTATION) / 2):
+        #             vector.append(wA['h2'].item(i,j))
+        #         else:
+        #             vector.append(wB['h2'].item(i,j))
+        #     matrix.append(vector)
+        # w['h2'] = np.matrix(matrix)
 
         matrix = []
-        for i in range(n_hidden_2):
+        for i in range(n_hidden_1):
             vector = []
             for j in range(n_classes):
                 r = random.random()
@@ -330,21 +339,21 @@ class DeepEvolution(Evolution):
                 vector.append(bB['b1'].item(i))
         b['b1'] = np.array(vector)
 
-        vector = []
-        for i in range(n_hidden_2):
-            r = random.random()
-            # create a random command with given rate
-            if r < MUTATION:
-                vector.append(random.random())
-            # with 50% chance from parentA, 50% chance from parentB
-            elif r < (MUTATION + (1 - MUTATION) / 2):
-                vector.append(bA['b2'].item(i))
-            else:
-                vector.append(bB['b2'].item(i))
-        b['b2'] = np.array(vector)
+        # vector = []
+        # for i in range(n_hidden_2):
+        #     r = random.random()
+        #     # create a random command with given rate
+        #     if r < MUTATION:
+        #         vector.append(random.random())
+        #     # with 50% chance from parentA, 50% chance from parentB
+        #     elif r < (MUTATION + (1 - MUTATION) / 2):
+        #         vector.append(bA['b2'].item(i))
+        #     else:
+        #         vector.append(bB['b2'].item(i))
+        # b['b2'] = np.array(vector)
 
         vector = []
-        for i in range(n_hidden_2):
+        for i in range(n_hidden_1):
             r = random.random()
             # create a random command with given rate
             if r < MUTATION:
@@ -362,22 +371,28 @@ class DeepEvolution(Evolution):
         runner_status = []
         chaser_status = []
         print('initiate Training')
-        for i in range(1000):
+        for tr in range(1000):
             ''' train 2 agents '''
             runner_store = []
             chaser_store = []
             for i in range(self.community):
                 GAME_OVER = False
                 while not GAME_OVER:
-                    # for event in pygame.event.get():
-                    #     if event.type == pygame.QUIT:
-                    #             extinct = True
-                    # self.screen.fill((0, 0, 0)) # reset canvas
-                    self.update(self.screen, False)
-                    self.collision()
-                    self.AgentsCollision(self.step)  # check collisions
-                    GAME_OVER = self.check_gameover()
-                    # pygame.display.flip() # update the image
+                    if (tr % 5 == 0):
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT:
+                                    extinct = True
+                        self.screen.fill((0, 0, 0)) # reset canvas
+                        self.update(self.screen, True)
+                        self.collision()
+                        self.AgentsCollision(self.step)  # check collisions
+                        GAME_OVER = self.check_gameover()
+                        pygame.display.flip() # update the image
+                    else:
+                        self.update(self.screen, False)
+                        self.collision()
+                        self.AgentsCollision(self.step)  # check collisions
+                        GAME_OVER = self.check_gameover()
                 runner_store.append((self.runner[self.communityNum].fitness, self.communityNum))
                 chaser_store.append((self.chaser[self.communityNum].fitness, self.communityNum))
                 self.communityNum += 1

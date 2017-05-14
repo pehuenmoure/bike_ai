@@ -29,7 +29,10 @@ FOOD = 0 # number of food generated in the map
 RADIUS = 50
 
 # Network Parameters
-n_hidden_1 =  5 # 1st layer number of features
+n_hidden_1 =  3 # 1st layer number of features
 n_hidden_2 =  3 # 2nd layer number of features
 n_input =  7    # input
 n_classes = 3   # left, straight, right
+
+COLOR_C = (0,0,255) # the center circle of the agents
+COLOR_S = (255,0,0) # the color of the sensor
