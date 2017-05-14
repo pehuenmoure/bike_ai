@@ -64,7 +64,7 @@ class Agent(object):
         length = self.sensorLength
 
         edges = [([0,0],[0,HEIGHT]), ([0,0],[WIDTH,0]), ([WIDTH,0],[WIDTH,HEIGHT]), ([0,HEIGHT],[WIDTH,HEIGHT])]
-        
+
         for i in np.arange(thetas.size):
             dx = self.pos[0] + length * np.cos(thetas[i])
             dy = self.pos[1] + length * np.sin(thetas[i])
@@ -188,7 +188,7 @@ class Agent(object):
     def setElite(self):
         ''' set the elite status of the agent '''
         self.isElite = True
-        
+
 
 class Target(object):
     def __init__(self, pos = np.array([780, 20])):
@@ -200,8 +200,8 @@ class Target(object):
 
 class Wall(object):
     def __init__(self, move = False):
-        position = np.array([random.random() * WIDTH, random.random() * HEIGHT])
-        self.init = position
+        position = np.array([random.random() * WIDTH, 50 + random.random() * (HEIGHT -100)])
+        self.init = np.copy(position)
         self.pos = position
         self.width = 100 + 100 * random.random()
         self.height = 10
